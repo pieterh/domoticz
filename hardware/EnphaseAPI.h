@@ -29,7 +29,18 @@ class EnphaseAPI : public CDomoticzHardwareBase
 	int getSunRiseSunSetMinutes(bool bGetSunRise);
 
       private:
+	bool getInverterDetails(Json::Value& result);
+	void parseInverters(const Json::Value& root);
+	bool getFromInventory(const Json::Value& root, const std::string &InventoryType, Json::Value& result);
+	bool getEnvoyInfo();
+
+	int getSunRiseSunSetMinutes(const bool bGetSunRise);
+      private:
 	std::string m_szIPAddress;
+	std::string m_szSerialNumber;
+	std::string m_szEnvoyUsername;
+	std::string m_szEnvoyPassword;
+
 	P1Power m_p1power;
 	P1Power m_c1power;
 	P1Power m_c2power;

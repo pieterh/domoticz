@@ -7,6 +7,7 @@
 #include "../main/localtime_r.h"
 #include "../httpclient/HTTPClient.h"
 #include "../main/json_helper.h"
+#include "../tinyxpath/tinyxml.h"
 #include "../main/RFXtrx.h"
 #include "../main/mainworker.h"
 #include <iostream>
@@ -21,8 +22,12 @@
 #endif
 
 /*
-Example
+Example production
 {"production":[{"type":"inverters","activeCount":9,"readingTime":1568991780,"wNow":712,"whLifetime":1448651},{"type":"eim","activeCount":1,"measurementType":"production","readingTime":1568991966,"wNow":624.315,"whLifetime":1455843.527,"varhLeadLifetime":0.001,"varhLagLifetime":311039.158,"vahLifetime":1619431.681,"rmsCurrent":2.803,"rmsVoltage":233.289,"reactPwr":137.092,"apprntPwr":654.245,"pwrFactor":0.95,"whToday":4295.527,"whLastSevenDays":74561.527,"vahToday":5854.681,"varhLeadToday":0.001,"varhLagToday":2350.158}],"consumption":[{"type":"eim","activeCount":1,"measurementType":"total-consumption","readingTime":1568991966,"wNow":1260.785,"whLifetime":2743860.336,"varhLeadLifetime":132372.858,"varhLagLifetime":273043.125,"vahLifetime":3033001.948,"rmsCurrent":5.995,"rmsVoltage":233.464,"reactPwr":437.269,"apprntPwr":1399.886,"pwrFactor":0.9,"whToday":11109.336,"whLastSevenDays":129007.336,"vahToday":13323.948,"varhLeadToday":895.858,"varhLagToday":3700.125},{"type":"eim","activeCount":1,"measurementType":"net-consumption","readingTime":1568991966,"wNow":636.47,"whLifetime":0.0,"varhLeadLifetime":132372.857,"varhLagLifetime":-37996.033,"vahLifetime":3033001.948,"rmsCurrent":3.191,"rmsVoltage":233.376,"reactPwr":574.361,"apprntPwr":744.807,"pwrFactor":0.85,"whToday":0,"whLastSevenDays":0,"vahToday":0,"varhLeadToday":0,"varhLagToday":0}],"storage":[{"type":"acb","activeCount":0,"readingTime":0,"wNow":0,"whNow":0,"state":"idle"}]}
+*/
+/*
+Example inventory
+[{"type":"PCU","devices":[{"part_num":"800-00630-r02","installed":"1588068812","serial_num":"121915011220”,”device_status":["envoy.global.ok"],"last_rpt_date":"1588692067","admin_state":1,"dev_type":1,"created_date":"1588068812","img_load_date":"1548755627","img_pnum_running":"520-00082-r01-v02.14.02","ptpn":"540-00134-r01-v02.14.04","chaneid":1627390225,"device_control":[{"gficlearset":false}],"producing":true,"communicating":true,"provisioned":true,"operating":false},{"part_num":"800-00630-r02","installed":"1588068816","serial_num":"121915011221”,”device_status":["envoy.global.ok"],"last_rpt_date":"1588692069","admin_state":1,"dev_type":1,"created_date":"1588068816","img_load_date":"1548755627","img_pnum_running":"520-00082-r01-v02.14.02","ptpn":"540-00134-r01-v02.14.04","chaneid":1627390481,"device_control":[{"gficlearset":false}]],"producing":true,"communicating":true,"provisioned":true,"operating":false}]},{"type":"ACB","devices":[]},{"type":"NSRB","devices":[]}]
 */
 
 #ifdef DEBUG_EnphaseAPI_W
@@ -95,6 +100,8 @@ void EnphaseAPI::Do_Work()
 	_log.Log(LOG_STATUS, "EnphaseAPI Worker started...");
 	int sec_counter = Enphase_request_INTERVAL - 5;
 
+	getEnvoyInfo();
+
 	while (!IsStopRequested(1000))
 	{
 		sec_counter++;
@@ -111,6 +118,10 @@ void EnphaseAPI::Do_Work()
 				parseProduction(result);
 				parseConsumption(result);
 				parseNetConsumption(result);
+			}
+			if (getInverterDetails(result))
+			{
+			   parseInverters(result);
 			}
 		}
 	}
@@ -180,6 +191,43 @@ bool EnphaseAPI::getProductionDetails(Json::Value& result)
 		)
 	{
 		_log.Log(LOG_ERROR, "EnphaseAPI: Invalid (no) data received");
+		return false;
+	}
+	return true;
+}
+
+bool EnphaseAPI::getInverterDetails(Json::Value& result)
+{
+	std::string sResult;
+	if (m_szEnvoyUsername.empty() || m_szEnvoyPassword.empty()) 
+		return false;
+
+#ifdef DEBUG_EnphaseAPI_R
+	sResult = ReadFile("E:\\EnphaseAPI_inverters.json");
+#else
+	std::stringstream sURL;
+	sURL << "http://" << m_szEnvoyUsername << ":" << m_szEnvoyPassword << "@" << m_szIPAddress << "/api/v1/production/inverters";
+
+	if (!HTTPClient::GET(sURL.str(), sResult))
+	{
+		_log.Log(LOG_ERROR, "EnphaseAPI: Error getting http data for inventory!");
+		return false;
+	}
+#ifdef DEBUG_EnphaseAPI_W
+	SaveString2Disk(sResult, "E:\\EnphaseAPI_inverters.json")
+#endif
+#endif
+
+	bool ret = ParseJSon(sResult, result);
+	_log.Log(LOG_NORM, "EnphaseAPI: Received %s", sResult.c_str());
+	if ((!ret) || (!result.isArray()))
+	{
+		_log.Log(LOG_ERROR, "EnphaseAPI: Invalid inverter data received!");
+		return false;
+	}
+	if (result.empty())
+	{
+		_log.Log(LOG_ERROR, "EnphaseAPI: Invalid (no) inverter data received");
 		return false;
 	}
 	return true;
@@ -277,3 +325,92 @@ void EnphaseAPI::parseNetConsumption(const Json::Value& root)
 	m_c2power.usagecurrent = std::max(musage,0);
 	sDecodeRXMessage(this, (const unsigned char *)&m_c2power, "Enphase Net Consumption kWh Total", 255, nullptr);
 }
+
+void EnphaseAPI::parseInverters(const Json::Value& root)
+{
+	Json::Value pcuInfo;
+    int iNrInverters;
+	_log.Log(LOG_NORM, "EnphaseAPI: Parsing inverter data");
+ 	iNrInverters = root.size();
+	if (iNrInverters > 0) {
+		_log.Log(LOG_NORM, "EnphaseAPI: Received information for %d inverters", iNrInverters);
+
+		//std::string serial = inverter["serial_num"].asString();
+	} else {
+		_log.Log(LOG_ERROR, "EnphaseAPI: No inverter information found!");
+	}
+}
+
+bool EnphaseAPI::getFromInventory(const Json::Value& root, const std::string &InventoryType, Json::Value& result)
+{
+	for (Json::Value::ArrayIndex i = 0; i != root.size(); i++)
+	{
+		if (root[i]["type"].asString().compare(InventoryType) == 0)
+		{
+		    result = Json::Value(root[i]);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool EnphaseAPI::getEnvoyInfo() 
+{
+    m_szSerialNumber.clear();
+	m_szEnvoyUsername.clear();
+	m_szEnvoyPassword.clear();
+
+    std::string sResult;
+
+#ifdef DEBUG_EnphaseAPI_R
+    sResult = ReadFile("E:\\EnphaseAPI_info.xml");
+#else
+    std::stringstream sURL;
+    sURL << "http://" << m_szIPAddress << "/info.xml";
+
+    if (!HTTPClient::GET(sURL.str(), sResult))
+    {
+        _log.Log(LOG_ERROR, "EnphaseAPI: Error getting http data for envoy information!");
+        return false;
+    }
+#ifdef DEBUG_EnphaseAPI_W
+    SaveString2Disk(sResult, "E:\\EnphaseAPI_info.xml")
+#endif
+#endif
+	TiXmlDocument doc;
+    doc.Parse(sResult.c_str(), 0, TIXML_ENCODING_UTF8);
+	TiXmlHandle hDoc(&doc);
+	TiXmlElement* pElem;
+	TiXmlHandle hRoot(0);
+
+	TiXmlHandle hDevice(0);
+	TiXmlElement* pSerialNumber;
+
+    pElem=hDoc.FirstChildElement().Element();
+	// should always have a valid root but handle gracefully if it does
+	if (!pElem) return false;
+
+	hRoot=TiXmlHandle(pElem);
+	hDevice=hRoot.FirstChild( "device" );
+    
+    pSerialNumber = hDevice.FirstChild("sn").Element();
+    if (pSerialNumber) 
+    {
+        _log.Log(LOG_ERROR, "EnphaseAPI: 2");
+        m_szSerialNumber = pSerialNumber->GetText();
+        _log.Log(LOG_ERROR, "EnphaseAPI: serial number %s", m_szSerialNumber.c_str());
+		if (m_szSerialNumber.length() == 12) 
+		{
+		    // the envoy username is a fixed name and 
+			// the password is the last 6 characters of the serial number
+			m_szEnvoyUsername = "envoy";
+			m_szEnvoyPassword = m_szSerialNumber.substr(6, 6);
+		} else {
+		   _log.Log(LOG_ERROR, "EnphaseAPI: Incorrect serial number.");
+		}
+		return true;
+    }
+
+	return false;
+}
+
