@@ -269,7 +269,7 @@ namespace http {
 						settings.listening_address = "0.0.0.0";
 						break;
 					case 2:
-						_log.Log(LOG_ERROR, "WebServer(%s) startup failed on address %s with port: %s: %s", m_server_alias.c_str(), settings.listening_address.c_str(), settings.listening_port.c_str(), e.what());
+						_log.Log(LOG_ERROR, "!! WebServer(%s) startup failed on address %s with port: %s: %s", m_server_alias.c_str(), settings.listening_address.c_str(), settings.listening_port.c_str(), e.what());
 						if (atoi(settings.listening_port.c_str()) < 1024)
 							_log.Log(LOG_ERROR, "WebServer(%s) check privileges for opening ports below 1024", m_server_alias.c_str());
 						else
@@ -1321,6 +1321,12 @@ namespace http {
 			else if (htype == HTYPE_AirconWithMe) {
 				//all fine here!
 			}
+			else if (htype == HTYPE_AlfenNG9xx) {
+				if (address.empty() || port == 0)					
+					return;
+				if (port == 0)
+					port = 502;					
+			}			
 			else
 				return;
 
@@ -1517,7 +1523,7 @@ namespace http {
 				|| (htype == HTYPE_KMTronicTCP) || (htype == HTYPE_KMTronicUDP) || (htype == HTYPE_SOLARMAXTCP) || (htype == HTYPE_RelayNet) || (htype == HTYPE_SatelIntegra) || (htype == HTYPE_eHouseTCP) || (htype == HTYPE_RFLINKTCP)
 				|| (htype == HTYPE_Comm5TCP || (htype == HTYPE_Comm5SMTCP) || (htype == HTYPE_CurrentCostMeterLAN))
 				|| (htype == HTYPE_NefitEastLAN) || (htype == HTYPE_DenkoviHTTPDevices) || (htype == HTYPE_DenkoviTCPDevices) || (htype == HTYPE_Ec3kMeterTCP) || (htype == HTYPE_MultiFun) || (htype == HTYPE_ZIBLUETCP) || (htype == HTYPE_OnkyoAVTCP)
-				|| (htype == HTYPE_OctoPrint)
+				|| (htype == HTYPE_OctoPrint) 
 				) {
 				//Lan
 				if (address.empty())
@@ -1719,6 +1725,12 @@ namespace http {
 			else if (htype == HTYPE_AirconWithMe) {
 				//all fine here!
 			}
+			else if (htype == HTYPE_AlfenNG9xx) {
+				if (address.empty() || port == 0)					
+					return;
+				if (port == 0)
+					port = 502;		
+			}			
 			else
 				return;
 

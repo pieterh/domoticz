@@ -1378,7 +1378,51 @@ define(['app'], function (app) {
 						ShowNotify($.t('Problem updating hardware!'), 2500, true);
 					}
 				});
-		    }
+			}
+			else if (text.indexOf("Alfen NG9xx charging station") >= 0) {
+				// update hardware
+				var address = $("#hardwarecontent #divremote #tcpaddress").val();
+				if (address == "") {
+					ShowNotify($.t('Please enter an Address!'), 2500, true);
+					return;
+				}
+				var port = $("#hardwarecontent #divremote #tcpport").val();
+				if (port == "") {
+					ShowNotify($.t('Please enter an Port!'), 2500, true);
+					return;
+				}
+				var intRegex = /^\d+$/;
+				if (!intRegex.test(port)) {
+					ShowNotify($.t('Please enter an Valid Port!'), 2500, true);
+					return;
+				}
+				Mode1 = 0;
+				Mode2 = 0;
+				Mode3 = 0;
+				Mode4 = 0;
+				Mode5 = 0;
+				Mode6 = 0;								
+				
+				$.ajax({
+					url: "json.htm?type=command&param=updatehardware"+
+					"&name=" + encodeURIComponent(name) +					
+					"&htype=" + hardwaretype +
+					"&address=" + address +
+					"&port=" + port +				
+					"&enabled=" + bEnabled +
+					"&idx=" + idx +
+					"&datatimeout=" + datatimeout +
+					"&Mode1=" + Mode1 + "&Mode2=" + Mode2 + "&Mode3=" + Mode3 + "&Mode4=" + Mode4 + "&Mode5=" + Mode5 + "&Mode6=" + Mode6,
+					async: false,
+					dataType: 'json',
+					success: function (data) {
+						RefreshHardwareTable();
+					},
+					error: function () {
+						ShowNotify($.t('Problem updating hardware!'), 2500, true);
+					}
+				});
+			}
 		}
 
 		AddHardware = function () {
@@ -2628,7 +2672,50 @@ define(['app'], function (app) {
 						ShowNotify($.t('Problem updating hardware!'), 2500, true);
 					}
 				});
-			}
+			}else if (text.indexOf("Alfen NG9xx charging station") >= 0) {
+				// add hardware
+				var address = $("#hardwarecontent #divremote #tcpaddress").val();
+				if (address == "") {
+					ShowNotify($.t('Please enter an Address!'), 2500, true);
+					return;
+				}
+				var port = $("#hardwarecontent #divremote #tcpport").val();
+				if (port == "") {
+					ShowNotify($.t('Please enter an Port!'), 2500, true);
+					return;
+				}
+				var intRegex = /^\d+$/;
+				if (!intRegex.test(port)) {
+					ShowNotify($.t('Please enter an Valid Port!'), 2500, true);
+					return;
+				}
+				Mode1 = 0;
+				Mode2 = 0;
+				Mode3 = 0;
+				Mode4 = 0;
+				Mode5 = 0;
+				Mode6 = 0;								
+				
+				$.ajax({
+					url: "json.htm?type=command&param=addhardware"+
+					"&name=" + encodeURIComponent(name) +					
+					"&htype=" + hardwaretype +
+					"&address=" + address +
+					"&port=" + port +				
+					"&enabled=" + bEnabled +
+					"&idx=" + idx +
+					"&datatimeout=" + datatimeout +
+					"&Mode1=" + Mode1 + "&Mode2=" + Mode2 + "&Mode3=" + Mode3 + "&Mode4=" + Mode4 + "&Mode5=" + Mode5 + "&Mode6=" + Mode6,
+					async: false,
+					dataType: 'json',
+					success: function (data) {
+						RefreshHardwareTable();
+					},
+					error: function () {
+						ShowNotify($.t('Problem updating hardware!'), 2500, true);
+					}
+				});
+			};
 		}
 
 		EditRFXCOMMode = function (idx, name, Mode1, Mode2, Mode3, Mode4, Mode5, Mode6, Extra, version) {
@@ -4205,6 +4292,11 @@ define(['app'], function (app) {
 							$("#hardwarecontent #divevohomeweb #comboevogateway").val((Location >>> 8) & 15);
 							$("#hardwarecontent #divevohomeweb #comboevotcs").val((Location >>> 4) & 15);
 						}
+						else if (data["Type"].indexOf("Alfen NG9xx charging station") >= 0) {
+							console.log("PHR> Alfen zet waarde");
+							$("#hardwarecontent #hardwareparamsremote #tcpaddress").val(data["Address"]);
+							$("#hardwarecontent #hardwareparamsremote #tcpport").val(data["Port"]);
+						}						
 					}
 				}
 			});
@@ -4349,6 +4441,8 @@ define(['app'], function (app) {
 			$("#hardwarecontent #divbuienradar").hide();
 			$("#hardwarecontent #divserial").hide();
 			$("#hardwarecontent #divremote").hide();
+			$("#hardwarecontent #divremote #lblremoteport").show();	// AirconWithMe hides the port
+			$("#hardwarecontent #divremote #tcpport").show();		// other hardware expects the addres&port to be shown in one step
 			$("#hardwarecontent #divlogin").hide();
 			$("#hardwarecontent #divhttppoller").hide();
 
@@ -4638,6 +4732,11 @@ define(['app'], function (app) {
 			    else {
 			        $("#hardwarecontent #divmqtt #mqtt_publish").show();
 			    }
+			}
+			if (text.indexOf("Alfen NG9xx charging station") >= 0) {
+				// UpdateHardwareParamControls
+				$("#hardwarecontent #divremote").show();
+				$("#hardwarecontent #hardwareparamsremote #tcpport").val(502);
 			}
 		}
 

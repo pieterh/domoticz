@@ -129,6 +129,7 @@
 #include "../hardware/plugins/Plugins.h"
 #endif
 #include "../hardware/Arilux.h"
+#include "../hardware/AlfenNG9xx.h"
 #include "../hardware/OpenWebNetUSB.h"
 #include "../hardware/InComfort.h"
 #include "../hardware/RelayNet.h"
@@ -1044,6 +1045,9 @@ bool MainWorker::AddHardwareFromParams(
 	case HTYPE_Arilux:
 		pHardware = new Arilux(ID);
 		break;
+	case HTYPE_AlfenNG9xx:
+		pHardware = new CAlfenNG9xx(ID, Address, Port);
+		break;		
 	case HTYPE_OpenWebNetUSB:
 		pHardware = new COpenWebNetUSB(ID, SerialPort, 115200);
 		break;
