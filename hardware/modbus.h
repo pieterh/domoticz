@@ -289,8 +289,10 @@ int modbus::modbus_read_holding_registers(int address, int amount, uint16_t *buf
             set_bad_con();
             return BAD_CON;
         }
+        std::cout<< "read done" <<std::endl;
         modbuserror_handle(to_rec, READ_REGS);
         if(err) return err_no;
+        std::cout<< "bytes read " << k <<std::endl;
         for(uint i = 0; i < amount; i++) {
             buffer[i] = ((uint16_t)to_rec[9u + 2u * i]) << 8u;
             buffer[i] += (uint16_t) to_rec[10u + 2u * i];
